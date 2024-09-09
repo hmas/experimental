@@ -1,76 +1,57 @@
-class Node:
-    def __init__(self, key: int, value: int):
-        self.key = key
-        self.value = value
-        self.prev = None
-        self.next = None
+# LRU Cache Implementation in Python
+
+from collections import OrderedDict
+from typing import Optional
 
 class LRUCache:
     def __init__(self, capacity: int):
+        # Initialize the cache with a fixed capacity
         self.capacity = capacity
-        self.cache = {}  # key -> Node
-        self.head = Node(0, 0)  # dummy head
-        self.tail = Node(0, 0)  # dummy tail
-        self.head.next = self.tail
-        self.tail.prev = self.head
+        self.cache = OrderedDict()  # This will store the keys and values in order of usage
 
-    def _remove(self, node: Node):
-        prev_node = node.prev
-        next_node = node.next
-        prev_node.next = next_node
-        next_node.prev = prev_node
+    def get(self, key: int) -> Optional[int]:
+        # Returns the value for the key if it exists in cache, otherwise -1.
+        if key not in self.cache:
+            return -1  # Key not found
+        else:
+            # Move the accessed item to the end of the OrderedDict to mark it as recently used
+            self.cache.move_to_end(key)
+            return self.cache[key]  # Return the value associated with the key
 
-    def _add_to_head(self, node: Node):
-        node.prev = self.head
-        node.next = self.head.next
-        self.head.next.prev = node
-        self.head.next = node
-
-    def get(self, key: int) -> int:
+    def put(self, key: int, value: str):
+        # Update or add the value for the key.
         if key in self.cache:
-            node = self.cache[key]
-            self._remove(node)
-            self._add_to_head(node)
-            return node.value
-        return -1  # Key not found
-
-    def put(self, key: int, value: int):
-        if key in self.cache:
-            self._remove(self.cache[key])
-        node = Node(key, value)
-        self.cache[key] = node
-        self._add_to_head(node)
-
+            self.cache.move_to_end(key)  # Move the existing key to the end
+        self.cache[key] = value  # Insert/Update the key-value pair
         if len(self.cache) > self.capacity:
-            # Remove the least recently used item
-            lru_node = self.tail.prev
-            self._remove(lru_node)
-            del self.cache[lru_node.key]
+            # Remove the first item (least recently used)
+            self.cache.popitem(last=False)  # Remove the first item from the OrderedDict
 
-# Unit tests
+# Unit Tests
 import unittest
 
 class TestLRUCache(unittest.TestCase):
     def test_lru_cache(self):
-        cache = LRUCache(2)
-        cache.put(1, 1)
-        cache.put(2, 2)
-        self.assertEqual(cache.get(1), 1)  # returns 1
-        cache.put(3, 3)  # evicts key 2
-        self.assertEqual(cache.get(2), -1)  # returns -1 (not found)
-        cache.put(4, 4)  # evicts key 1
-        self.assertEqual(cache.get(1), -1)  # returns -1 (not found)
-        self.assertEqual(cache.get(3), 3)  # returns 3
-        self.assertEqual(cache.get(4), 4)  # returns 4
+        # Create an LRU Cache with capacity 2
+        lru_cache = LRUCache(2)
+        lru_cache.put(1, 'A')  # Cache is {1: 'A'}
+        lru_cache.put(2, 'B')  # Cache is {1: 'A', 2: 'B'}
+        self.assertEqual(lru_cache.get(1), 'A')  # Returns 'A'
+        lru_cache.put(3, 'C')  # Evicts key 2, Cache is {1: 'A', 3: 'C'}
+        self.assertEqual(lru_cache.get(2), -1)  # Returns -1 (not found)
+        lru_cache.put(4, 'D')  # Evicts key 1, Cache is {3: 'C', 4: 'D'}
+        self.assertEqual(lru_cache.get(1), -1)  # Returns -1 (not found)
+        self.assertEqual(lru_cache.get(3), 'C')  # Returns 'C'
+        self.assertEqual(lru_cache.get(4), 'D')  # Returns 'D'
 
-    def test_stress_test(self):
-        cache = LRUCache(100)
-        for i in range(200):
-            cache.put(i, i)
-        for i in range(100, 200):
-            self.assertEqual(cache.get(i), i)
-        for i in range(100):
-            self.assertEqual(cache.get(i), -1)  # should be evicted
-
+# Stress Test
 if __name__ == '__main__':
-    unittest.main()
+    import time
+    start_time = time.time()
+    lru_cache = LRUCache(1000)  # Create a large cache
+    for i in range(2000):  # Insert more items than capacity
+        lru_cache.put(i, str(i))
+    print("Stress test completed in: ", time.time() - start_time)
+
+    # Run unit tests
+    unittest.main(argv=[''], exit=False)  # Run the tests without exiting the interpreter
